@@ -13,6 +13,7 @@ module.exports = {
 
   async execute(interaction) {
     const usernameId = interaction.options.getString('usernameid');
+    const usernameOnly = usernameId.split(':')[0].toLowerCase();
 
     await interaction.deferReply({ ephemeral: true });
 
@@ -29,12 +30,13 @@ module.exports = {
       if (blacklistList) {
         const docCards = await fetch(`https://api.trello.com/1/lists/${blacklistList.id}/cards`).then(res => res.json());
 
-        const foundDocCards = docCards.filter(card => card.name.toLowerCase().includes(usernameId.toLowerCase()));
+        const foundDocCards = docCards.filter(card =>
+          card.name.toLowerCase().includes(usernameId.toLowerCase())
+        );
 
         if (foundDocCards.length) {
           results.push({
-            board: 'DoC',
-            url: `https://trello.com/b/${docBoardId}`,
+            board: `[DoC](https://trello.com/b/${docBoardId})`,
             cards: foundDocCards.map(card => `- [${card.name}](${card.shortUrl})`),
           });
         }
@@ -50,14 +52,13 @@ module.exports = {
       const ignoreLabels = ['Dismissed', 'Denied', 'Voided', 'Appealed', 'Declined'];
 
       const foundDopsCards = dopsCards.filter(card =>
-        card.name.toLowerCase().includes(usernameId.split(':')[0].toLowerCase()) &&
+        card.name.toLowerCase().includes(usernameOnly) &&
         !card.labels.some(label => ignoreLabels.includes(label.name))
       );
 
       if (foundDopsCards.length) {
         results.push({
-          board: 'DoPS',
-          url: `https://trello.com/b/${dopsBoardId}`,
+          board: `[DoPS](https://trello.com/b/${dopsBoardId})`,
           cards: foundDopsCards.map(card => `- [${card.name}](${card.shortUrl})`),
         });
       }
@@ -73,7 +74,7 @@ module.exports = {
     if (results.length) {
       results.forEach(result => {
         embed.addFields({
-          name: `${result.board} [Link](${result.url})`,
+          name: result.board,
           value: result.cards.join('\n'),
         });
       });
