@@ -21,7 +21,7 @@ build/
 
 # Database files (optional)
 *.sqlite
-*.db
+.db
 
 # Cache
 .cache/
