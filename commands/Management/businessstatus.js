@@ -1,91 +1,54 @@
-const { SlashCommandBuilder, MessageActionRow, MessageButton } = require('discord.js');
-const mysql = require('mysql2');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+
+const ALLOWED_ROLES = [
+  '1354672092288909445', 
+  '1354672089977847895', 
+  '1357520387512078356', 
+  '1357520385569980446', 
+  '1357520375361048807'
+];
 
 module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('businessstatus')
-        .setDescription('Set the business status (open/closed) and update VC'),
+  data: new SlashCommandBuilder()
+    .setName('status')
+    .setDescription('Set the business status to Open or Closed.')
+    .addStringOption(option =>
+      option.setName('type')
+        .setDescription('Choose business status')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Open', value: 'open' },
+          { name: 'Closed', value: 'closed' }
+        )
+    ),
 
-    async execute(interaction, db) {
-        // Get the business status from the database
-        db.query('SELECT * FROM business_status LIMIT 1', (err, results) => {
-            if (err) {
-                console.error('Database query error:', err);
-                return interaction.reply({ content: 'An error occurred while fetching business status.', ephemeral: true });
-            }
+  async execute(interaction, db) {
+    const type = interaction.options.getString('type');
 
-            // If no results exist, initialize the business status
-            if (results.length === 0) {
-                db.query('INSERT INTO business_status (status) VALUES ("open")', (err) => {
-                    if (err) {
-                        console.error('Failed to insert default business status:', err);
-                        return interaction.reply({ content: 'An error occurred while initializing business status.', ephemeral: true });
-                    }
-                    console.log('Business status initialized to open.');
-                });
-            }
+    if (!interaction.member.roles.cache.some(role => ALLOWED_ROLES.includes(role.id))) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true });
+    }
 
-            const status = results[0]?.status || 'open';  // Default to open if no status is set
+    const statusChannel = interaction.guild.channels.cache.get('1357251956409765978'); // Track Status VC
+    const waitChannel = interaction.guild.channels.cache.get('1357252016337977414');   // Waittime VC
 
-            // Create buttons to change status
-            const row = new MessageActionRow()
-                .addComponents(
-                    new MessageButton()
-                        .setCustomId('open')
-                        .setLabel('Open')
-                        .setStyle('PRIMARY'),
-                    new MessageButton()
-                        .setCustomId('closed')
-                        .setLabel('Closed')
-                        .setStyle('DANGER')
-                );
+    if (type === 'open') {
+      await db.query('UPDATE settings SET business_status = ?, wait_time = ? WHERE id = 1', ['open', '0 Minutes']);
 
-            // Send a message to the user to select the status
-            interaction.reply({
-                content: `Current status is: ${status.charAt(0).toUpperCase() + status.slice(1)}. Choose a new status:`,
-                components: [row],
-            });
+      await statusChannel.setName('Track Status: Open');
+      await waitChannel.setName('Wait: 0 Minutes');
 
-            // Set up the interaction collector
-            const filter = i => i.user.id === interaction.user.id;  // Ensure only the user who triggered the command can interact
+      return interaction.reply('Business status set to Open.');
 
-            const collector = interaction.channel.createMessageComponentCollector({
-                filter,
-                time: 15000, // Collect for 15 seconds
-            });
+    } else if (type === 'closed') {
+      const closedMessage = "We're currently closed, please keep an eye in our <#1354670500529307648> for the next race session.";
 
-            collector.on('collect', async i => {
-                if (i.customId === 'open' || i.customId === 'closed') {
-                    const newStatus = i.customId;
+      await db.query('UPDATE settings SET business_status = ?, wait_time = ? WHERE id = 1', ['closed', closedMessage]);
 
-                    // Update the database with the new status
-                    db.query('UPDATE business_status SET status = ? WHERE id = 1', [newStatus], (err) => {
-                        if (err) {
-                            console.error('Failed to update business status:', err);
-                            return i.reply({ content: 'An error occurred while updating business status.', ephemeral: true });
-                        }
-                        console.log(`Business status updated to: ${newStatus}`);
-                        i.reply(`You've changed the status of the business to ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}.`);
-                    });
+      await statusChannel.setName('Track Status: Closed');
+      await waitChannel.setName('Wait: ');
 
-                    // Update the voice channel name based on the new status
-                    const businessStatusChannel = interaction.guild.channels.cache.find(channel => channel.name === 'business-status' && channel.type === 'GUILD_VOICE');
-                    if (businessStatusChannel) {
-                        businessStatusChannel.setName(`Track Status: ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`)
-                            .then(() => console.log(`Updated voice channel name to: Track Status: ${newStatus}`))
-                            .catch(err => console.error('Failed to update VC name:', err));
-                    } else {
-                        console.error('Voice channel "business-status" not found.');
-                    }
-                }
-                collector.stop();  // Stop the collector after one interaction
-            });
-
-            collector.on('end', () => {
-                if (!collector.ended) {
-                    interaction.editReply({ content: 'The time to change the status has expired.', components: [] });
-                }
-            });
-        });
-    },
-};
+      return interaction.reply('Business status set to Closed.');
+    }
+  }
+}

@@ -1,54 +1,49 @@
 const { SlashCommandBuilder } = require('discord.js');
 
+const ALLOWED_ROLES = [
+  '1354672092288909445',
+  '1354672089977847895',
+  '1357520387512078356',
+  '1357520385569980446',
+  '1357520375361048807'
+];
+
 module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('waittime')
-        .setDescription('Set or view the current wait time.')
-        .addIntegerOption(option =>
-            option.setName('time')
-                .setDescription('Set the wait time in minutes.')
-                .setRequired(false)),
+  data: new SlashCommandBuilder()
+    .setName('waittime')
+    .setDescription('View or set the current wait time.')
+    .addStringOption(option =>
+      option.setName('set')
+        .setDescription('Set a new wait time (example: 5 Minutes)')
+        .setRequired(false)
+    ),
 
-    async execute(interaction) {
-        const waitTime = interaction.options.getInteger('time');
+  async execute(interaction, db) {
+    const newTime = interaction.options.getString('set');
 
-        // Assuming db is passed in a higher scope or integrated into your bot logic
-        const db = interaction.client.db;
+    const [rows] = await db.promise().query('SELECT business_status, wait_time FROM settings WHERE id = 1');
+    const status = rows[0].business_status;
+    const waitTime = rows[0].wait_time;
 
-        // Check business status from the database
-        db.query('SELECT status, wait_time FROM business WHERE id = 1', (err, results) => {
-            if (err) {
-                console.error('Error fetching business status:', err);
-                return interaction.reply('There was an error fetching the business status.');
-            }
+    const waitChannel = interaction.guild.channels.cache.get('1357252016337977414');
 
-            const businessStatus = results[0]?.status; // Assuming only one row exists
-            const currentWaitTime = results[0]?.wait_time || 0; // Default to 0 if not set
+    if (!newTime) {
+      return interaction.reply(`Current Wait Time: ${waitTime}`);
+    }
 
-            // If the business is closed, prevent modification of the wait time
-            if (businessStatus === 'closed') {
-                return interaction.reply('The business is currently closed. You cannot modify the wait time.');
-            }
+    if (!interaction.member.roles.cache.some(role => ALLOWED_ROLES.includes(role.id))) {
+      return interaction.reply({ content: 'You do not have permission to set wait time.', ephemeral: true });
+    }
 
-            // If the business is open, allow wait time modification
-            if (waitTime !== null) {
-                // If no wait time is provided, we set the default to 0 when the business is open
-                const newWaitTime = waitTime !== undefined ? waitTime : 0;
+    if (status === 'closed') {
+      return interaction.reply('Business is closed. You cannot modify wait time.');
+    }
 
-                db.query('UPDATE business SET wait_time = ? WHERE id = 1', [newWaitTime], (err, results) => {
-                    if (err) {
-                        console.error('Error updating wait time:', err);
-                        return interaction.reply('There was an error updating the wait time.');
-                    }
+    await db.query('UPDATE settings SET wait_time = ? WHERE id = 1', [newTime]);
+    await waitChannel.setName(`Wait: ${newTime}`);
 
-                    return interaction.reply(`The wait time has been set to ${newWaitTime} minutes.`);
-                });
-            } else {
-                // If no time is provided, show the current wait time
-                return interaction.reply(`The current wait time is ${currentWaitTime} minutes.`);
-            }
-        });
-    },
-};
+    return interaction.reply(`Wait time has been updated to ${newTime}.`);
+  }
+}
 
 
