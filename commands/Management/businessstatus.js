@@ -36,9 +36,12 @@ module.exports = {
       ]);
 
       await guild.channels.cache.get(businessStatusVC)?.setName('Track Status: Closed');
-      await guild.channels.cache.get(waitTimeVC)?.setName('Wait: ');
+      await guild.channels.cache.get(waitTimeVC)?.setName('Wait: '); // <- This line fixes it
     }
 
-    await interaction.reply({ content: `You've changed the status of the business to ${status.charAt(0).toUpperCase() + status.slice(1)}.`, ephemeral: true });
+    await interaction.reply({
+      content: `You've changed the status of the business to ${status.charAt(0).toUpperCase() + status.slice(1)}.`,
+      ephemeral: true
+    });
   },
 };
