@@ -17,11 +17,12 @@ module.exports = {
 
   async execute(interaction, db) {
     const status = interaction.options.getString('status');
+    const guild = interaction.guild;
 
     const businessStatusVC = '1357251956409765978';
     const waitTimeVC = '1357252016337977414';
 
-    const guild = interaction.guild;
+    await interaction.deferReply({ ephemeral: true });
 
     await db.query('UPDATE settings SET business_status = ? WHERE id = 1', [status]);
 
@@ -32,16 +33,15 @@ module.exports = {
       await guild.channels.cache.get(waitTimeVC)?.setName('Wait: 0 Minutes');
     } else if (status === 'closed') {
       await db.query('UPDATE settings SET wait_time = ? WHERE id = 1', [
-        `We're currently closed, please keep an eye in our <#1354670500529307648> for the next race session.`,
+        `We're currently closed, please keep an eye in our <#1354670500529307648> for the next race session.`
       ]);
 
       await guild.channels.cache.get(businessStatusVC)?.setName('Track Status: Closed');
-      await guild.channels.cache.get(waitTimeVC)?.setName('Wait: '); // <- This line fixes it
+      await guild.channels.cache.get(waitTimeVC)?.setName('Wait: ');
     }
 
-    await interaction.reply({
-      content: `You've changed the status of the business to ${status.charAt(0).toUpperCase() + status.slice(1)}.`,
-      ephemeral: true
+    await interaction.editReply({
+      content: `You've changed the status of the business to ${status.charAt(0).toUpperCase() + status.slice(1)}.`
     });
   },
 };
