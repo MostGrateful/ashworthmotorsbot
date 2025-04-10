@@ -1,0 +1,48 @@
+# Node.js modules
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Mac & Windows system files
+.DS_Store
+Thumbs.db
+
+# Output
+dist/
+build/
+
+# Database files (optional)
+*.sqlite
+*.db
+
+# Cache
+.cache/
+.nyc_output/
+coverage/
+
+# VSCode settings (optional)
+.vscode/
+
+# OS files
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# IDE files
+.idea/
+*.iml
+
+# Optional Git files
+*.swp
+*.swo
+
+# dotenv backup
+.env.*
