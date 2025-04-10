@@ -1,44 +1,47 @@
 require('dotenv').config();
-const { REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { REST, Routes } = require('discord.js');
 
-// Create array to store commands
 const commands = [];
-
-// Path to commands directory
 const commandsPath = path.join(__dirname, 'commands');
 
-// Read all folders inside commands/
-const commandFolders = fs.readdirSync(commandsPath);
-
-for (const folder of commandFolders) {
-  const folderPath = path.join(commandsPath, folder);
-  const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
-
-  for (const file of commandFiles) {
-    const command = require(path.join(folderPath, file));
-    if ('data' in command && 'execute' in command) {
-      commands.push(command.data.toJSON());
-    } else {
-      console.warn(`[WARNING] The command at ${folder}/${file} is missing "data" or "execute".`);
+// Function to recursively read command files from directories
+function loadCommands(directory) {
+  const files = fs.readdirSync(directory);
+  for (const file of files) {
+    const filePath = path.join(directory, file);
+    const stat = fs.statSync(filePath);
+    if (stat.isDirectory()) {
+      loadCommands(filePath); // Recurse into subdirectory
+    } else if (file.endsWith('.js')) {
+      const command = require(filePath);
+      if (command.data && command.execute) {
+        commands.push(command.data.toJSON());
+      } else {
+        console.warn(`The command at ${filePath} is missing "data" or "execute" properties.`);
+      }
     }
   }
 }
+
+// Load commands from the 'commands' directory
+loadCommands(commandsPath);
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
   try {
-    console.log(`🔄 Started refreshing ${commands.length} application (/) commands for Guild: ${process.env.GUILD_ID}`);
+    console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
+    // Register commands globally
     await rest.put(
-      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-      { body: commands }
+      Routes.applicationCommands(process.env.CLIENT_ID),
+      { body: commands },
     );
 
-    console.log('✅ Successfully reloaded guild (/) commands.');
+    console.log('Successfully reloaded application (/) commands.');
   } catch (error) {
-    console.error('❌ Error deploying commands:', error);
+    console.error(error);
   }
 })();
