@@ -22,15 +22,12 @@ module.exports = {
     const dopsBoardId = 'kl3ZKkNr'; // DoPS
 
     try {
-      // Check DoC Board
-      const docLists = await fetch(`https://api.trello.com/1/boards/${docBoardId}/lists`)
-        .then(res => res.json());
-
+      // DoC Search
+      const docLists = await fetch(`https://api.trello.com/1/boards/${docBoardId}/lists`).then(res => res.json());
       const blacklistList = docLists.find(list => list.name.toLowerCase() === 'business blacklist');
 
       if (blacklistList) {
-        const docCards = await fetch(`https://api.trello.com/1/lists/${blacklistList.id}/cards`)
-          .then(res => res.json());
+        const docCards = await fetch(`https://api.trello.com/1/lists/${blacklistList.id}/cards`).then(res => res.json());
 
         const foundDocCards = docCards.filter(card => card.name.toLowerCase().includes(usernameId.toLowerCase()));
 
@@ -38,7 +35,7 @@ module.exports = {
           results.push({
             board: 'DoC',
             url: `https://trello.com/b/${docBoardId}`,
-            cards: foundDocCards.map(card => `[${card.name}](${card.shortUrl})`),
+            cards: foundDocCards.map(card => `- [${card.name}](${card.shortUrl})`),
           });
         }
       }
@@ -47,9 +44,8 @@ module.exports = {
     }
 
     try {
-      // Check DoPS Board
-      const dopsCards = await fetch(`https://api.trello.com/1/boards/${dopsBoardId}/cards`)
-        .then(res => res.json());
+      // DoPS Search
+      const dopsCards = await fetch(`https://api.trello.com/1/boards/${dopsBoardId}/cards`).then(res => res.json());
 
       const ignoreLabels = ['Dismissed', 'Denied', 'Voided', 'Appealed', 'Declined'];
 
@@ -62,7 +58,7 @@ module.exports = {
         results.push({
           board: 'DoPS',
           url: `https://trello.com/b/${dopsBoardId}`,
-          cards: foundDopsCards.map(card => `[${card.name}](${card.shortUrl})`),
+          cards: foundDopsCards.map(card => `- [${card.name}](${card.shortUrl})`),
         });
       }
     } catch (error) {
