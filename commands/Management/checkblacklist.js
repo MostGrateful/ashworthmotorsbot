@@ -4,60 +4,87 @@ const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fet
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('checkblacklist')
-    .setDescription('Check if a user is blacklisted.')
+    .setDescription('Check if a user is blacklisted on DoC or DoPS')
     .addStringOption(option =>
-      option.setName('user')
-        .setDescription('Enter Username:ID')
+      option.setName('usernameid')
+        .setDescription('Provide the Username:ID')
         .setRequired(true)
     ),
 
   async execute(interaction) {
-    const userInput = interaction.options.getString('user');
-    const [username] = userInput.split(':'); // Only check username on DoPS
+    const usernameId = interaction.options.getString('usernameid');
 
-    await interaction.deferReply({ flags: 64 }); // Private reply, flags is the modern ephemeral
+    await interaction.deferReply({ ephemeral: true });
 
     const results = [];
 
-    // DoC Board
+    const docBoardId = 'r4a8Tw1I'; // DoC
+    const dopsBoardId = 'kl3ZKkNr'; // DoPS
+
     try {
-      const docResponse = await fetch('https://api.trello.com/1/boards/r4a8Tw1I/lists?cards=open&card_fields=name');
-      const docLists = await docResponse.json();
+      // Check DoC Board
+      const docLists = await fetch(`https://api.trello.com/1/boards/${docBoardId}/lists`)
+        .then(res => res.json());
 
-      const blacklistList = docLists.find(list => list.name === 'Business Blacklist');
+      const blacklistList = docLists.find(list => list.name.toLowerCase() === 'business blacklist');
 
-      if (blacklistList && blacklistList.cards.some(card => card.name.toLowerCase().includes(userInput.toLowerCase()))) {
-        results.push('[DoC](https://trello.com/b/r4a8Tw1I)');
+      if (blacklistList) {
+        const docCards = await fetch(`https://api.trello.com/1/lists/${blacklistList.id}/cards`)
+          .then(res => res.json());
+
+        const foundDocCards = docCards.filter(card => card.name.toLowerCase().includes(usernameId.toLowerCase()));
+
+        if (foundDocCards.length) {
+          results.push({
+            board: 'DoC',
+            url: `https://trello.com/b/${docBoardId}`,
+            cards: foundDocCards.map(card => `[${card.name}](${card.shortUrl})`),
+          });
+        }
       }
-    } catch (err) {
-      console.error('Error checking DoC board:', err);
+    } catch (error) {
+      console.error('Error checking DoC board:', error);
     }
 
-    // DoPS Board
     try {
-      const dopsResponse = await fetch('https://api.trello.com/1/boards/kl3ZKkNr/cards?fields=name,labels');
-      const dopsCards = await dopsResponse.json();
+      // Check DoPS Board
+      const dopsCards = await fetch(`https://api.trello.com/1/boards/${dopsBoardId}/cards`)
+        .then(res => res.json());
 
-      const ignoredLabels = ['Dismissed', 'Denied', 'Voided', 'Appealed'];
+      const ignoreLabels = ['Dismissed', 'Denied', 'Voided', 'Appealed', 'Declined'];
 
-      const match = dopsCards.find(card =>
-        card.name.toLowerCase().includes(username.toLowerCase()) &&
-        !card.labels.some(label => ignoredLabels.includes(label.name))
+      const foundDopsCards = dopsCards.filter(card =>
+        card.name.toLowerCase().includes(usernameId.split(':')[0].toLowerCase()) &&
+        !card.labels.some(label => ignoreLabels.includes(label.name))
       );
 
-      if (match) {
-        results.push('[DoPS](https://trello.com/b/kl3ZKkNr)');
+      if (foundDopsCards.length) {
+        results.push({
+          board: 'DoPS',
+          url: `https://trello.com/b/${dopsBoardId}`,
+          cards: foundDopsCards.map(card => `[${card.name}](${card.shortUrl})`),
+        });
       }
-    } catch (err) {
-      console.error('Error checking DoPS board:', err);
+    } catch (error) {
+      console.error('Error checking DoPS board:', error);
     }
 
     const embed = new EmbedBuilder()
-      .setColor(results.length > 0 ? 'Red' : 'Green')
-      .setTitle(results.length > 0 ? 'Failed, the user has a blacklist on:' : 'Cleared, no active blacklist.')
-      .setDescription(results.length > 0 ? results.join(' | ') : 'Nothing found across DoC & DoPS.')
-      .setFooter({ text: 'Any failed results should be checked and verified.' });
+      .setTitle('Blacklist Check Results')
+      .setColor(results.length ? 'Red' : 'Green')
+      .setFooter({ text: 'Any failed results should be checked and verified' });
 
-    await interaction.editReply({ embeds: [embed] });
+    if (results.length) {
+      results.forEach(result => {
+        embed.addFields({
+          name: `${result.board} [Link](${result.url})`,
+          value: result.cards.join('\n'),
+        });
+      });
+
+      await interaction.editReply({ embeds: [embed] });
+    } else {
+      await interaction.editReply({ content: 'Cleared, no active blacklist.' });
+    }
   },
 };
