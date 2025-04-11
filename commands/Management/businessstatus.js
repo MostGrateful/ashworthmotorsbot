@@ -3,51 +3,46 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('status')
-    .setDescription('Set the business status.')
+    .setDescription('Update the business status (Open/Closed)')
     .addStringOption(option =>
       option.setName('state')
         .setDescription('Choose Open or Closed')
         .setRequired(true)
         .addChoices(
           { name: 'Open', value: 'open' },
-          { name: 'Closed', value: 'closed' },
+          { name: 'Closed', value: 'closed' }
         )
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild), // Optional for staff perms only
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
-  async execute(interaction, db) {
-    const state = interaction.options.getString('state');
+  async execute(interaction, client) {
+    const db = client.db;
+    const status = interaction.options.getString('state');
 
-    const allowedRoles = [
-      '1354672092288909445',
-      '1354672089977847895',
-      '1357520387512078356',
-      '1357520385569980446',
-      '1357520375361048807',
-    ];
-
-    if (!interaction.member.roles.cache.some(role => allowedRoles.includes(role.id))) {
-      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true });
-    }
-
-    await interaction.deferReply({ ephemeral: true });
-
-    await db.query('UPDATE settings SET business_status = ? WHERE id = 1', [state]);
-
-    const statusVC = await interaction.guild.channels.fetch('1357251956409765978');
+    const trackVC = await interaction.guild.channels.fetch('1357251956409765978');
     const waitVC = await interaction.guild.channels.fetch('1357252016337977414');
 
-    if (state === 'open') {
-      await db.query('UPDATE settings SET wait_time = "0 Minutes" WHERE id = 1');
-      await statusVC.setName('Track Status: Open');
-      await waitVC.setName('Wait Time: 0 Minutes');
-    } else {
-      await db.query('UPDATE settings SET wait_time = "We\'re currently closed, please keep an eye in our #press-release for the next race session." WHERE id = 1');
-      await statusVC.setName('Track Status: Closed');
-      await waitVC.setName('Wait Time: N/A');
+    if (!trackVC || !waitVC) {
+      return interaction.reply({ content: 'Track or Wait Time VC not found.', ephemeral: true });
     }
 
-    await interaction.editReply({ content: `You've changed the status of the business to **${state.toUpperCase()}**.` });
+    // Update database
+    await db.execute('UPDATE settings SET business_status = ?, wait_time = ? WHERE id = 1',
+      status === 'open'
+        ? ['Open', '0 Minutes']
+        : ['Closed', `We're currently closed, please keep an eye in our <#1354670500529307648> for the next race session.`]
+    );
+
+    // VC name changes
+    await trackVC.setName(`Track Status: ${status === 'open' ? 'Open' : 'Closed'}`);
+
+    await waitVC.setName(`Wait Time: ${status === 'open' ? '0 Minutes' : 'N/A'}`);
+
+    await interaction.reply({
+      content: `You've changed the status of the business to **${status.charAt(0).toUpperCase() + status.slice(1)}**.`,
+      ephemeral: true
+    });
   },
 };
+
 
