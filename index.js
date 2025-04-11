@@ -2,23 +2,29 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, GatewayIntentBits, REST, Routes } = require('discord.js');
-const db = require('./db');
+const db = require('./db'); // Your db.js connection
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
+  ],
 });
 
 client.commands = new Collection();
-client.db = db;
+client.db = db; // Attach db to client so all commands have access
 
 // Dynamically load all commands from subfolders
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
+
 for (const folder of fs.readdirSync(commandsPath)) {
   const folderPath = path.join(commandsPath, folder);
   if (!fs.lstatSync(folderPath).isDirectory()) continue;
 
   const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
+
   for (const file of commandFiles) {
     const filePath = path.join(folderPath, file);
     const command = require(filePath);
@@ -31,8 +37,9 @@ for (const folder of fs.readdirSync(commandsPath)) {
   }
 }
 
-// Auto register slash commands with Discord
+// Auto register slash commands
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
 (async () => {
   try {
     console.log(`🔄 Reloading ${commands.length} application (/) commands...`);
@@ -46,7 +53,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   }
 })();
 
-// Load events from ./events folder
+// Load events
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
@@ -57,8 +64,11 @@ for (const file of eventFiles) {
   }
 }
 
-// Login the bot
+// When bot ready
 client.once('ready', () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 });
+
+// Login bot
 client.login(process.env.DISCORD_TOKEN);
+
