@@ -3,45 +3,44 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('status')
-    .setDescription('Set the business status')
+    .setDescription('Set the business status to open or closed.')
     .addStringOption(option =>
-      option.setName('status')
-        .setDescription('Choose Open or Closed')
+      option.setName('state')
+        .setDescription('Choose business status')
         .setRequired(true)
         .addChoices(
           { name: 'Open', value: 'open' },
-          { name: 'Closed', value: 'closed' }
+          { name: 'Closed', value: 'closed' },
         )
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   async execute(interaction, db) {
-    const status = interaction.options.getString('status');
-    const guild = interaction.guild;
-
-    const businessStatusVC = '1357251956409765978';
-    const waitTimeVC = '1357252016337977414';
-
     await interaction.deferReply({ ephemeral: true });
 
-    await db.query('UPDATE settings SET business_status = ? WHERE id = 1', [status]);
+    const state = interaction.options.getString('state');
+    const vcStatusID = '1357251956409765978';
+    const vcWaitID = '1357252016337977414';
 
-    if (status === 'open') {
-      await db.query('UPDATE settings SET wait_time = ? WHERE id = 1', ['0 Minutes']);
+    // Update status in SQL
+    await db.promise().query('UPDATE settings SET business_status = ?', [state]);
 
-      await guild.channels.cache.get(businessStatusVC)?.setName('Track Status: Open');
-      await guild.channels.cache.get(waitTimeVC)?.setName('Wait: 0 Minutes');
-    } else if (status === 'closed') {
-      await db.query('UPDATE settings SET wait_time = ? WHERE id = 1', [
-        `We're currently closed, please keep an eye in our <#1354670500529307648> for the next race session.`
+    const guild = interaction.guild;
+    const vcStatus = guild.channels.cache.get(vcStatusID);
+    const vcWait = guild.channels.cache.get(vcWaitID);
+
+    if (state === 'open') {
+      await db.promise().query('UPDATE settings SET wait_time = ?', ['0 Minutes']);
+      if (vcStatus) await vcStatus.setName('Track Status: Open');
+      if (vcWait) await vcWait.setName('Wait Time: 0 Minutes');
+    } else {
+      await db.promise().query('UPDATE settings SET wait_time = ?', [
+        "We're currently closed, please keep an eye in our #press-release for the next race session."
       ]);
-
-      await guild.channels.cache.get(businessStatusVC)?.setName('Track Status: Closed');
-      await guild.channels.cache.get(waitTimeVC)?.setName('Wait: ');
+      if (vcStatus) await vcStatus.setName('Track Status: Closed');
+      if (vcWait) await vcWait.setName('Wait Time: N/A');
     }
 
-    await interaction.editReply({
-      content: `You've changed the status of the business to ${status.charAt(0).toUpperCase() + status.slice(1)}.`
-    });
+    await interaction.editReply({ content: `You've changed the status of the business to ${state.toUpperCase()}.` });
   },
 };
