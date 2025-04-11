@@ -47,6 +47,6 @@ module.exports = {
 
     await interaction.editReply({ content: `Wait time has been updated to: **${newTime}**` });
   },
-};git status
+}
 
 
