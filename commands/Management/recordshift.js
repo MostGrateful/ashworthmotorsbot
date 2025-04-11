@@ -1,69 +1,71 @@
 const { SlashCommandBuilder } = require('discord.js');
-const axios = require('axios');
+const fetch = require('node-fetch');
+require('dotenv').config();
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('record')
-    .setDescription('Record staff attendance for a shift.')
-    .addStringOption(option =>
-      option.setName('shift')
-        .setDescription('List usernames separated by commas')
-        .setRequired(true)
+    .setDescription('Record system commands')
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('shift')
+        .setDescription('Record a shift')
+        .addStringOption(option =>
+          option
+            .setName('users')
+            .setDescription('Comma separated list of usernames')
+            .setRequired(true)
+        )
     ),
 
   async execute(interaction) {
+    if (!interaction.options.getSubcommand() === 'shift') return;
+
     await interaction.deferReply({ ephemeral: true });
 
-    const usernames = interaction.options.getString('shift').split(',').map(name => name.trim());
+    const usernames = interaction.options.getString('users').split(',').map(u => u.trim());
+    const now = new Date();
+    const date = now.toLocaleDateString();
+    const time = now.toLocaleTimeString();
+
+    const boardId = process.env.TRELLO_BOARD_ID;
     const apiKey = process.env.TRELLO_API_KEY;
     const apiToken = process.env.TRELLO_API_TOKEN;
-    const boardId = process.env.TRELLO_BOARD_ID;
+
+    const listName = 'Submitted Shift Logs';
 
     try {
-      // Get lists
-      const listsResponse = await axios.get(`https://api.trello.com/1/boards/${boardId}/lists`, {
-        params: { key: apiKey, token: apiToken }
-      });
-
-      const targetList = listsResponse.data.find(list => list.name.toLowerCase() === 'submitted shift logs');
+      // Fetch Lists on Board
+      const listsRes = await fetch(`https://api.trello.com/1/boards/${boardId}/lists?key=${apiKey}&token=${apiToken}`);
+      const lists = await listsRes.json();
+      const targetList = lists.find(list => list.name === listName);
 
       if (!targetList) {
-        return await interaction.editReply('❌ Could not find the "Submitted Shift Logs" list on the board.');
+        return interaction.editReply('❌ Failed to find the "Submitted Shift Logs" list.');
       }
 
-      // Get labels
-      const labelsResponse = await axios.get(`https://api.trello.com/1/boards/${boardId}/labels`, {
-        params: { key: apiKey, token: apiToken }
-      });
+      const labelRes = await fetch(`https://api.trello.com/1/boards/${boardId}/labels?key=${apiKey}&token=${apiToken}`);
+      const labels = await labelRes.json();
+      const pendingLabel = labels.find(label => label.name.toLowerCase() === 'pending');
 
-      const pendingLabel = labelsResponse.data.find(label => label.name.toLowerCase() === 'pending');
-
-      const createdCards = [];
-
-      for (const username of usernames) {
-        const now = new Date();
-        const description = `Shift: ${now.toLocaleDateString()} & ${now.toLocaleTimeString()}\nSubmitted by: ${interaction.user.tag}`;
-
-        const cardResponse = await axios.post(`https://api.trello.com/1/cards`, null, {
-          params: {
-            name: username,
-            due: now.toISOString(),
-            desc: description,
+      for (const user of usernames) {
+        await fetch(`https://api.trello.com/1/cards?key=${apiKey}&token=${apiToken}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: user,
+            desc: `Shift: ${date} & ${time}\nSubmitted by: ${interaction.user.tag}`,
             idList: targetList.id,
-            idLabels: pendingLabel ? pendingLabel.id : undefined,
-            key: apiKey,
-            token: apiToken
-          }
+            due: now.toISOString(),
+            idLabels: pendingLabel ? [pendingLabel.id] : []
+          }),
         });
-
-        createdCards.push(`[${username}](${cardResponse.data.url})`);
       }
 
-      await interaction.editReply(`✅ Successfully logged the shift for:\n${createdCards.join('\n')}`);
-
+      await interaction.editReply('✅ Shift successfully logged!');
     } catch (error) {
-      console.error('❌ Error creating cards on Trello:', error);
-      await interaction.editReply('❌ Failed to log the shift. Please try again later or contact management.');
+      console.error('Error recording shift:', error);
+      await interaction.editReply('❌ An error occurred while recording the shift.');
     }
   },
 };
