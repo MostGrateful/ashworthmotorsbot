@@ -6,65 +6,59 @@ module.exports = {
     .setName('checkblacklist')
     .setDescription('Check if a user is blacklisted on public Trello boards.')
     .addStringOption(option =>
-      option.setName('username_id')
-        .setDescription('The Username:ID to check (e.g. JohnDoe:1234)')
+      option.setName('username')
+        .setDescription("Please provide the username of the person you're conducting a blacklist check on.")
         .setRequired(true)
     ),
 
   async execute(interaction) {
-    const query = interaction.options.getString('username_id');
+    const username = interaction.options.getString('username');
     const results = [];
 
-    await interaction.reply({ content: '🔎 Running blacklist check...', ephemeral: true });
+    await interaction.reply({ content: '🔎 Searching Trello boards for blacklist records...', ephemeral: true });
 
-    const docBoardId = 'r4a8Tw1I';
-    const doPSBoardId = 'kl3ZKkNr';
-    const ignoreLabels = ['Dismissed', 'Denied', 'Voided', 'Appealed', 'Declined'];
+    const boards = [
+      { id: 'r4a8Tw1I', name: 'DoC', listName: 'Business Blacklist' },
+      { id: 'kl3ZKkNr', name: 'DoPS', ignoreLabels: ['Dismissed', 'Denied', 'Voided', 'Appealed', 'Declined'] },
+    ];
 
-    // Search DoC Business Blacklist
-    try {
-      const docRes = await fetch(`https://trello.com/b/${docBoardId}.json`);
-      const docData = await docRes.json();
-      const blacklistList = docData.lists.find(l => l.name === 'Business Blacklist');
+    for (const board of boards) {
+      try {
+        const res = await fetch(`https://trello.com/b/${board.id}.json`);
+        const data = await res.json();
 
-      if (blacklistList) {
-        const cards = docData.cards.filter(c => c.idList === blacklistList.id && c.name.includes(query));
-        if (cards.length) {
-          results.push({ board: 'DoC', url: `https://trello.com/b/${docBoardId}` });
+        // Search every list in the board
+        for (const list of data.lists) {
+          if (board.listName && list.name !== board.listName) continue;
+
+          const cardsInList = data.cards.filter(card => card.idList === list.id);
+
+          for (const card of cardsInList) {
+            const hasIgnoredLabel = card.labels?.some(label => board.ignoreLabels?.includes(label.name));
+
+            if (hasIgnoredLabel) continue;
+            if (card.name.toLowerCase().includes(username.toLowerCase())) {
+              const link = `https://trello.com/c/${card.shortLink}`;
+              results.push(`[${card.name}] - ${board.name}: ${link}`);
+            }
+          }
         }
+
+      } catch (error) {
+        console.error(`❌ Error checking ${board.name} board:`, error);
       }
-    } catch (err) {
-      console.error('❌ Error checking DoC board:', err);
-    }
-
-    // Search DoPS Board
-    try {
-      const doPSRes = await fetch(`https://trello.com/b/${doPSBoardId}.json`);
-      const doPSData = await doPSRes.json();
-
-      const cards = doPSData.cards.filter(c => {
-        const hasIgnoredLabel = c.labels.some(l => ignoreLabels.includes(l.name));
-        return !hasIgnoredLabel && c.name.includes(query);
-      });
-
-      if (cards.length) {
-        results.push({ board: 'DoPS', url: `https://trello.com/b/${doPSBoardId}` });
-      }
-    } catch (err) {
-      console.error('❌ Error checking DoPS board:', err);
-    }
-
-    // Build Result
-    if (!results.length) {
-      return interaction.editReply({ content: '✅ Cleared — No active blacklist found.' });
     }
 
     const embed = new EmbedBuilder()
-      .setTitle('Blacklist Results')
-      .setDescription(results.map(r => `❌ Match found on [${r.board}](${r.url})`).join('\n'))
-      .setColor('Red')
-      .setFooter({ text: 'Please verify any matches manually.' });
+      .setTitle(`Blacklist Results for "${username}"`)
+      .setColor(results.length ? 0xff0000 : 0x00ff00)
+      .setDescription(
+        results.length
+          ? results.join('\n')
+          : '✅ No records found for this user.'
+      )
+      .setTimestamp();
 
-    await interaction.editReply({ content: '', embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };
