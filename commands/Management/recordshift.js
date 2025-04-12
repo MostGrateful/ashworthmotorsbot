@@ -10,21 +10,21 @@ module.exports = {
         .setDescription('Record a shift')
         .addStringOption(option =>
           option.setName('users')
-            .setDescription('List all usernames separated by a comma (No Spaces)')
+            .setDescription('List all usernames separated by a comma (no spaces)')
             .setRequired(true)
         )
     ),
 
-  async execute(interaction) {
+  async execute(interaction, client) {
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand === 'shift') {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: 64 });
 
       const usersInput = interaction.options.getString('users');
       const usernames = usersInput.split(',').map(u => u.trim()).filter(Boolean);
 
-      if (usernames.length === 0) {
+      if (!usernames.length) {
         return interaction.editReply('❌ No valid usernames provided.');
       }
 
@@ -39,7 +39,7 @@ module.exports = {
         const labels = await TrelloAPI.getLabelsOnBoard(process.env.TRELLO_BOARD_ID);
         const pendingLabel = labels.find(label => label.name.toLowerCase() === 'pending');
 
-        const now = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }); // Or your timezone
+        const now = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
 
         for (const username of usernames) {
           const card = await TrelloAPI.createCard(
