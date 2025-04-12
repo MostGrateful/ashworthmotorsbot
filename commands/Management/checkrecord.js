@@ -60,6 +60,14 @@ module.exports = {
           .join('\n') || 'No current record.';
       };
 
+      const formatProfile = (profile) => {
+        if (!profile) return 'No Data Found.';
+        return profile
+          .replace(/Roblox ID:/g, '**__Roblox ID:__**')
+          .replace(/Username:/g, '**__Username:__**')
+          .replace(/Asset Net Worth:/g, '**__Asset Net Worth:__**');
+      };
+
       const buildEmbed = (title, content) => new EmbedBuilder()
         .setTitle(`${title} for ${username}`)
         .setDescription(content)
@@ -69,7 +77,7 @@ module.exports = {
 
       const categories = ['Profile', 'Certifications', 'Arrest Record', 'Citation Record', 'Blacklist'];
       const contentData = [
-        data.profile || 'No Data Found.',
+        formatProfile(data.profile),
         'Coming Soon.',
         formatRecords(data.arrests),
         formatRecords(data.citations)
@@ -143,7 +151,6 @@ module.exports = {
           await msg.edit({ components: [] }).catch(() => {});
         }
 
-        // Logging usage
         const logChannel = interaction.guild.channels.cache.get('1354669298060365884');
 
         if (logChannel && logChannel.isTextBased()) {
