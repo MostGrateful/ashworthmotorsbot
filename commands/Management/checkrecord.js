@@ -36,7 +36,7 @@ module.exports = {
       return;
     }
 
-    const avatarURL = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`;
+    const avatarURL = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=420x420&format=Png&isCircular=false`;
 
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
@@ -80,7 +80,7 @@ module.exports = {
 
       const formatProfile = (profile) => {
         if (!profile) return 'No Data Found.';
-        return profile
+        return '**__Profile:__**\n' + profile
           .replace(/Roblox ID:/g, '**__Roblox ID:__**')
           .replace(/Username:/g, '**__Username:__**')
           .replace(/Asset Net Worth:/g, '**__Asset Net Worth:__**');
