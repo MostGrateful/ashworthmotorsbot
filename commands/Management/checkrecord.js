@@ -125,21 +125,39 @@ module.exports = {
         if (i.user.id !== interaction.user.id)
           return await i.reply({ content: 'This interaction is not for you!', ephemeral: true });
 
+        if (!i.deferred && !i.replied) {
+          await i.deferUpdate().catch(() => {});
+        }
+
         currentCategory = parseInt(i.customId.split('_')[1]);
 
         const embed = currentCategory === 4
           ? await getBlacklistStatus()
           : buildEmbed(categories[currentCategory], contentData[currentCategory]);
 
-        await i.update({
-          embeds: [embed],
-          components: [row],
-        });
+        await i.editReply({ embeds: [embed], components: [row] }).catch(() => {});
       });
 
       collector.on('end', async () => {
         if (msg.editable) {
           await msg.edit({ components: [] }).catch(() => {});
+        }
+
+        // Logging usage
+        const logChannel = interaction.guild.channels.cache.get('1354669298060365884');
+
+        if (logChannel && logChannel.isTextBased()) {
+          const logEmbed = new EmbedBuilder()
+            .setTitle('CheckRecord Command Used')
+            .addFields(
+              { name: 'Command Used By', value: `${interaction.user.tag} (${interaction.user.id})` },
+              { name: 'Target Username', value: username }
+            )
+            .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+            .setColor('DarkBlue')
+            .setFooter({ text: `Logged at ${new Date().toLocaleString()}` });
+
+          await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
         }
       });
 
