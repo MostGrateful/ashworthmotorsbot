@@ -1,41 +1,40 @@
-require('dotenv').config();
 const fetch = require('node-fetch');
 
-const baseURL = 'https://api.trello.com/1';
+const TRELLO_API_BASE = 'https://api.trello.com/1';
+const { TRELLO_KEY, TRELLO_TOKEN } = process.env;
 
 const TrelloAPI = {
-  async createCard(listId, name, desc, labelId) {
-    const url = `${baseURL}/cards?key=${process.env.TRELLO_API_KEY}&token=${process.env.TRELLO_API_TOKEN}`;
+  async getListsOnBoard(boardId) {
+    const res = await fetch(`${TRELLO_API_BASE}/boards/${boardId}/lists?key=${TRELLO_KEY}&token=${TRELLO_TOKEN}`);
+    return res.json();
+  },
 
-    const res = await fetch(url, {
+  async getLabelsOnBoard(boardId) {
+    const res = await fetch(`${TRELLO_API_BASE}/boards/${boardId}/labels?key=${TRELLO_KEY}&token=${TRELLO_TOKEN}`);
+    return res.json();
+  },
+
+  async createCard(listId, name, desc) {
+    const res = await fetch(`${TRELLO_API_BASE}/cards?key=${TRELLO_KEY}&token=${TRELLO_TOKEN}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         idList: listId,
         name,
-        desc,
-        idLabels: [labelId],
+        desc
       }),
     });
-
-    if (!res.ok) throw new Error(`Failed to create Trello card: ${res.status}`);
     return res.json();
   },
 
-  async getLists(boardId) {
-    const url = `${baseURL}/boards/${boardId}/lists?key=${process.env.TRELLO_API_KEY}&token=${process.env.TRELLO_API_TOKEN}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch lists: ${res.status}`);
+  async addLabelToCard(cardId, labelId) {
+    const res = await fetch(`${TRELLO_API_BASE}/cards/${cardId}/idLabels?key=${TRELLO_KEY}&token=${TRELLO_TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: labelId }),
+    });
     return res.json();
-  },
-
-  async getLabels(boardId) {
-    const url = `${baseURL}/boards/${boardId}/labels?key=${process.env.TRELLO_API_KEY}&token=${process.env.TRELLO_API_TOKEN}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch labels: ${res.status}`);
-    return res.json();
-  },
+  }
 };
 
 module.exports = TrelloAPI;
-
