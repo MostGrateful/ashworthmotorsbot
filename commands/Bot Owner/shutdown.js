@@ -1,23 +1,33 @@
-require('dotenv').config();
 const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('shutdown')
-    .setDescription('Shuts down the bot (Bot Owner Only).'),
+    .setDescription('Owner Only - Safely shutdown the bot.'),
 
-  async execute(interaction) {
-    const ownerId = process.env.BOT_OWNER_ID;
+  async execute(interaction, client) {
+    const allowedUsers = ['238058962711216130']; // Replace with your Discord ID(s)
 
-    if (interaction.user.id !== ownerId) {
-      return await interaction.reply({
-        content: '❌ You do not have permission to use this command.',
+    if (!allowedUsers.includes(interaction.user.id)) {
+      return await interaction.reply({ content: '❌ You are not authorized to use this command.', ephemeral: true });
+    }
+
+    try {
+      await interaction.reply({ content: 'Shutting down... 🛑', ephemeral: true });
+
+      console.log(`Shutdown initiated by ${interaction.user.tag} (${interaction.user.id})`);
+
+      await client.destroy();
+
+      process.exit(0); // Force exit just in case
+
+    } catch (error) {
+      console.error('❌ Error executing /shutdown:', error);
+
+      await interaction.reply({
+        content: 'An error occurred while attempting to shutdown the bot.',
         ephemeral: true,
       });
     }
-
-    await interaction.reply({ content: '🛑 Bot is shutting down...', ephemeral: true });
-    console.log(`Bot shutdown initiated by ${interaction.user.tag} (${interaction.user.id})`);
-    process.exit(0);
   },
-}
+};

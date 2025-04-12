@@ -3,35 +3,32 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('safetystatement')
-    .setDescription('View our safety statement.'),
+    .setDescription('View our Safety Statement.'),
 
-  async execute(interaction) {
-    const embed = new EmbedBuilder()
-      .setTitle('Safety Statement')
-      .setDescription(`
-        At Ashworth Motorsports, safety is our top priority. We believe in providing a thrilling experience while ensuring that all players are safe. 
-
-        Our Go-Karts are designed with safety features that ensure stability and reliability, and all drivers are encouraged to follow the safety guidelines provided before racing.
-
-        We also have a dedicated team of marshals who monitor the track during all races to ensure the safety of all participants. We want to make sure everyone has fun, but we want to make sure you stay safe too!
-
-        Always wear your helmet, follow the instructions, and race responsibly. We’re committed to making your racing experience as exciting and safe as possible. Have fun and race smart!
-      `)
-      .setColor('#213567')
-      .setThumbnail('https://i.ibb.co/35nvvqzc/dfd.png')
-      .setFooter({ text: 'Ashworth Motors', iconURL: 'https://i.ibb.co/WvYKNCKx/dfd-removebg-preview.png' });
-
+  async execute(interaction, client) {
     try {
-      const channel = await interaction.client.channels.fetch('1354669582400356363');
+      const embed = new EmbedBuilder()
+        .setTitle('Ashworth Motorsports - Safety Statement')
+        .setDescription('Safety is our number one priority at Ashworth Motorsports. We are committed to ensuring a safe and enjoyable experience for all guests and staff.')
+        .addFields(
+          { name: 'Track Safety', value: 'All track personnel are trained and certified to operate around go-karts and handle emergency situations.' },
+          { name: 'Emergency Response', value: 'Ashworth Motorsports has a detailed Emergency Response Plan (ERP) and employs certified medical personnel such as EMT-B staff for on-site emergencies.' },
+          { name: 'Rider Responsibility', value: 'All riders must follow safety instructions, wear proper gear, and listen to staff at all times.' },
+        )
+        .setFooter({ text: 'Ashworth Motorsports | Firestone' })
+        .setTimestamp();
 
-      await channel.send({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
 
-      await interaction.reply({ content: 'Sent the Safety Statement embed.', ephemeral: true });
     } catch (error) {
-      console.error('Error sending embed:', error);
-      await interaction.reply({ content: 'An error occurred while sending the Safety Statement embed.', ephemeral: true });
+      console.error('❌ Error executing /safetystatement:', error);
+      await interaction.reply({
+        content: 'An error occurred while fetching the safety statement.',
+        ephemeral: true,
+      });
     }
   },
 };
+
 
 

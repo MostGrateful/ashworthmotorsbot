@@ -3,26 +3,29 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('racewithus')
-    .setDescription('Get information about racing with us.'),
+    .setDescription('Learn how to race with Ashworth Motorsports.'),
 
-  async execute(interaction) {
-    const embed = new EmbedBuilder()
-      .setTitle('Race with Us')
-      .setDescription("Our track is currently under construction and isn’t ready yet. Please stay tuned for updates. We can’t wait to welcome you to an exciting racing experience once it's finished!")
-      .setColor('#213567')
-      .setThumbnail('https://i.ibb.co/35nvvqzc/dfd.png')
-      .setFooter({ text: 'Ashworth Motors', iconURL: 'https://i.ibb.co/WvYKNCKx/dfd-removebg-preview.png' });
-
+  async execute(interaction, client) {
     try {
-      const channel = await interaction.client.channels.fetch('1354669582400356363');
+      const embed = new EmbedBuilder()
+        .setTitle('Race With Us at Ashworth Motorsports!')
+        .setDescription('Interested in racing with us? Here\'s everything you need to know!')
+        .addFields(
+          { name: 'Announcements', value: 'Stay updated by watching our #press-release channel for upcoming race sessions.' },
+          { name: 'Joining a Race', value: 'When a session is active, join the Track VC and listen to staff instructions.' },
+          { name: 'Safety First', value: 'Ensure you follow all staff directions and wear proper safety gear.' },
+        )
+        .setFooter({ text: 'Ashworth Motorsports | Firestone' })
+        .setTimestamp();
 
-      await channel.send({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
 
-      await interaction.reply({ content: 'Sent the Race with Us embed.', ephemeral: true });
     } catch (error) {
-      console.error('Error sending embed:', error);
-      await interaction.reply({ content: 'An error occurred while sending the Race with Us embed.', ephemeral: true });
+      console.error('❌ Error executing /racewithus:', error);
+      await interaction.reply({
+        content: 'An error occurred while fetching race information.',
+        ephemeral: true,
+      });
     }
   },
 };
-

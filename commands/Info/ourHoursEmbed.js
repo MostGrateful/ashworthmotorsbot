@@ -3,27 +3,30 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ourhours')
-    .setDescription('View our business hours.'),
+    .setDescription('View Ashworth Motorsports operating hours.'),
 
-  async execute(interaction) {
-    const embed = new EmbedBuilder()
-      .setTitle('Our Hours')
-      .setDescription("We're currently not open for business yet, however we'll let you know when this changes.")
-      .setColor('#213567')
-      .setThumbnail('https://i.ibb.co/35nvvqzc/dfd.png')
-      .setFooter({ text: 'Ashworth Motors', iconURL: 'https://i.ibb.co/WvYKNCKx/dfd-removebg-preview.png' });
-
+  async execute(interaction, client) {
     try {
-      const channel = await interaction.client.channels.fetch('1354669582400356363');
+      const embed = new EmbedBuilder()
+        .setTitle('Ashworth Motorsports - Operating Hours')
+        .setDescription('Our race sessions vary based on availability and staff. Please review our typical hours below, but always check #press-release for real-time session announcements!')
+        .addFields(
+          { name: 'Weekdays', value: 'Usually Evenings (EST)\n*Exact times depend on staff availability.*' },
+          { name: 'Weekends', value: 'Flexible race times throughout the day and evening.' },
+          { name: 'Announcements', value: 'Follow #press-release for the latest race session schedules!' },
+        )
+        .setFooter({ text: 'Ashworth Motorsports | Firestone' })
+        .setTimestamp();
 
-      await channel.send({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
 
-      await interaction.reply({ content: 'Sent the Our Hours embed.', ephemeral: true });
     } catch (error) {
-      console.error('Error sending embed:', error);
-      await interaction.reply({ content: 'An error occurred while sending the Our Hours embed.', ephemeral: true });
+      console.error('❌ Error executing /ourhours:', error);
+      await interaction.reply({
+        content: 'An error occurred while fetching our operating hours.',
+        ephemeral: true,
+      });
     }
   },
 };
-
 

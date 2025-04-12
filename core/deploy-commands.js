@@ -5,42 +5,37 @@ const { REST, Routes } = require('discord.js');
 
 const commands = [];
 
-// Recursively load commands
-const loadCommands = (dir) => {
-  const files = fs.readdirSync(dir);
+// Load Commands
+const commandsPath = path.join(__dirname, '../commands');
 
-  for (const file of files) {
-    const filePath = path.join(dir, file);
-    const stat = fs.lstatSync(filePath);
+for (const folder of fs.readdirSync(commandsPath)) {
+  const folderPath = path.join(commandsPath, folder);
+  if (!fs.lstatSync(folderPath).isDirectory()) continue;
 
-    if (stat.isDirectory()) {
-      loadCommands(filePath); // Recursive
-    } else if (file.endsWith('.js')) {
-      const command = require(filePath);
-      if ('data' in command && 'execute' in command) {
-        commands.push(command.data.toJSON());
-      } else {
-        console.warn(`[WARNING] Missing data or execute in ${filePath}`);
-      }
+  for (const file of fs.readdirSync(folderPath).filter(f => f.endsWith('.js'))) {
+    const command = require(path.join(folderPath, file));
+
+    if ('data' in command && 'execute' in command) {
+      commands.push(command.data.toJSON());
+    } else {
+      console.warn(`⚠️ The command at ${file} is missing required properties.`);
     }
   }
-};
-
-loadCommands(path.join(__dirname, '../commands')); // correct path to your commands folder
+}
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
   try {
-    console.log(`🔄 Reloading ${commands.length} application (/) commands...`);
+    console.log(`🔄 Started refreshing ${commands.length} application (/) commands...`);
 
     await rest.put(
       Routes.applicationCommands(process.env.CLIENT_ID),
-      { body: commands }
+      { body: commands },
     );
 
-    console.log('✅ Successfully reloaded application (/) commands.');
+    console.log('✅ Successfully registered application (/) commands.');
   } catch (error) {
-    console.error('❌ Error deploying commands:', error);
+    console.error('❌ Failed to register commands:', error);
   }
 })();
