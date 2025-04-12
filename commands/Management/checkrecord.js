@@ -17,12 +17,33 @@ module.exports = {
 
     await interaction.reply({ content: 'Searching the Firestone database...', flags: 64 });
 
+    const fetchUserId = async (username) => {
+      const res = await fetch('https://users.roblox.com/v1/usernames/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usernames: [username] })
+      });
+
+      const json = await res.json();
+      return json.data && json.data.length > 0 ? json.data[0].id : null;
+    };
+
+    const userId = await fetchUserId(username);
+
+    if (!userId) {
+      await interaction.editReply({ content: `❌ The username **${username}** could not be found on Roblox. Please check the spelling and try again.`, flags: 64 });
+      return;
+    }
+
+    const avatarURL = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`;
+
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
 
     try {
       await page.goto('https://database.stateoffirestone.com/', { waitUntil: 'networkidle2' });
-      await page.type('input[name="username"]', username);
+      await page.waitForSelector('input', { timeout: 5000 });
+      await page.type('input', username);
       await Promise.all([
         page.click('button[type="submit"]'),
         page.waitForNavigation({ waitUntil: 'networkidle2' }),
@@ -30,15 +51,12 @@ module.exports = {
 
       const data = await page.evaluate(() => {
         const text = document.body.innerText;
-        const robloxIdMatch = text.match(/Roblox ID:\s(\d+)/);
-        const robloxId = robloxIdMatch ? robloxIdMatch[1] : null;
         const extract = (start, end) => {
           const pattern = new RegExp(`${start}[\\s\\S]*?${end}`, 'i');
           const match = text.match(pattern);
           return match ? match[0].replace(start, '').replace(end, '').trim() : '';
         };
         return {
-          robloxId,
           profile: extract('Profile', 'Callsigns'),
           arrests: extract('Arrest Record', 'Citation Records'),
           citations: extract('Citation Records', 'Terms')
@@ -49,7 +67,6 @@ module.exports = {
 
       const footerText = 'Source of this information comes from the Firestone Database';
       const footerImage = 'https://images-ext-1.discordapp.net/external/F9kGNa5k1MZU3TZJ1q4AOKL3m2JNUCFZQO-piZHTkGw/https/database.stateoffirestone.com/img/FS_Database.png?format=webp&quality=lossless&width=1860&height=239';
-      const avatarURL = data.robloxId ? `https://www.roblox.com/headshot-thumbnail/image?userId=${data.robloxId}&width=420&height=420&format=png` : null;
 
       const formatRecords = (records) => {
         if (!records || records.includes('No data available in table')) return 'No current record.';
