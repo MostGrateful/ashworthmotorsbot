@@ -1,40 +1,44 @@
-const fetch = require('node-fetch');
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
-const TRELLO_API_BASE = 'https://api.trello.com/1';
-const { TRELLO_KEY, TRELLO_TOKEN } = process.env;
+const BASE_URL = 'https://api.trello.com/1';
+const KEY = process.env.TRELLO_API_KEY;
+const TOKEN = process.env.TRELLO_API_TOKEN;
 
-const TrelloAPI = {
-  async getListsOnBoard(boardId) {
-    const res = await fetch(`${TRELLO_API_BASE}/boards/${boardId}/lists?key=${TRELLO_KEY}&token=${TRELLO_TOKEN}`);
-    return res.json();
-  },
+async function getListsOnBoard(boardId) {
+  const response = await fetch(`${BASE_URL}/boards/${boardId}/lists?key=${KEY}&token=${TOKEN}`);
+  return response.json();
+}
 
-  async getLabelsOnBoard(boardId) {
-    const res = await fetch(`${TRELLO_API_BASE}/boards/${boardId}/labels?key=${TRELLO_KEY}&token=${TRELLO_TOKEN}`);
-    return res.json();
-  },
+async function getLabelsOnBoard(boardId) {
+  const response = await fetch(`${BASE_URL}/boards/${boardId}/labels?key=${KEY}&token=${TOKEN}`);
+  return response.json();
+}
 
-  async createCard(listId, name, desc) {
-    const res = await fetch(`${TRELLO_API_BASE}/cards?key=${TRELLO_KEY}&token=${TRELLO_TOKEN}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        idList: listId,
-        name,
-        desc
-      }),
-    });
-    return res.json();
-  },
+async function createCard(listId, name, desc, due) {
+  const response = await fetch(`${BASE_URL}/cards?key=${KEY}&token=${TOKEN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      idList: listId,
+      name,
+      desc,
+      due,
+    }),
+  });
+  return response.json();
+}
 
-  async addLabelToCard(cardId, labelId) {
-    const res = await fetch(`${TRELLO_API_BASE}/cards/${cardId}/idLabels?key=${TRELLO_KEY}&token=${TRELLO_TOKEN}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ value: labelId }),
-    });
-    return res.json();
-  }
+async function addLabelToCard(cardId, labelId) {
+  await fetch(`${BASE_URL}/cards/${cardId}/idLabels?key=${KEY}&token=${TOKEN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value: labelId }),
+  });
+}
+
+module.exports = {
+  getListsOnBoard,
+  getLabelsOnBoard,
+  createCard,
+  addLabelToCard,
 };
-
-module.exports = TrelloAPI;
