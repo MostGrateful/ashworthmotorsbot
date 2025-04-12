@@ -1,71 +1,64 @@
 const { SlashCommandBuilder } = require('discord.js');
-const fetch = require('node-fetch');
-require('dotenv').config();
+const TrelloAPI = require('../../utils/TrelloAPI');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('record')
-    .setDescription('Record system commands')
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('shift')
+    .setDescription('Record shifts or other logs')
+    .addSubcommand(sub =>
+      sub.setName('shift')
         .setDescription('Record a shift')
         .addStringOption(option =>
-          option
-            .setName('users')
-            .setDescription('Comma separated list of usernames')
+          option.setName('users')
+            .setDescription('List all usernames separated by a comma (No Spaces)')
             .setRequired(true)
         )
     ),
 
   async execute(interaction) {
-    if (!interaction.options.getSubcommand() === 'shift') return;
+    const subcommand = interaction.options.getSubcommand();
 
-    await interaction.deferReply({ ephemeral: true });
+    if (subcommand === 'shift') {
+      await interaction.deferReply({ ephemeral: true });
 
-    const usernames = interaction.options.getString('users').split(',').map(u => u.trim());
-    const now = new Date();
-    const date = now.toLocaleDateString();
-    const time = now.toLocaleTimeString();
+      const usersInput = interaction.options.getString('users');
+      const usernames = usersInput.split(',').map(u => u.trim()).filter(Boolean);
 
-    const boardId = process.env.TRELLO_BOARD_ID;
-    const apiKey = process.env.TRELLO_API_KEY;
-    const apiToken = process.env.TRELLO_API_TOKEN;
-
-    const listName = 'Submitted Shift Logs';
-
-    try {
-      // Fetch Lists on Board
-      const listsRes = await fetch(`https://api.trello.com/1/boards/${boardId}/lists?key=${apiKey}&token=${apiToken}`);
-      const lists = await listsRes.json();
-      const targetList = lists.find(list => list.name === listName);
-
-      if (!targetList) {
-        return interaction.editReply('❌ Failed to find the "Submitted Shift Logs" list.');
+      if (usernames.length === 0) {
+        return interaction.editReply('❌ No valid usernames provided.');
       }
 
-      const labelRes = await fetch(`https://api.trello.com/1/boards/${boardId}/labels?key=${apiKey}&token=${apiToken}`);
-      const labels = await labelRes.json();
-      const pendingLabel = labels.find(label => label.name.toLowerCase() === 'pending');
+      try {
+        const lists = await TrelloAPI.getListsOnBoard(process.env.TRELLO_BOARD_ID);
+        const targetList = lists.find(list => list.name.toLowerCase() === 'submitted shift logs');
 
-      for (const user of usernames) {
-        await fetch(`https://api.trello.com/1/cards?key=${apiKey}&token=${apiToken}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: user,
-            desc: `Shift: ${date} & ${time}\nSubmitted by: ${interaction.user.tag}`,
-            idList: targetList.id,
-            due: now.toISOString(),
-            idLabels: pendingLabel ? [pendingLabel.id] : []
-          }),
-        });
+        if (!targetList) {
+          return interaction.editReply('❌ Could not find "Submitted Shift Logs" list.');
+        }
+
+        const labels = await TrelloAPI.getLabelsOnBoard(process.env.TRELLO_BOARD_ID);
+        const pendingLabel = labels.find(label => label.name.toLowerCase() === 'pending');
+
+        const now = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }); // Or your timezone
+
+        for (const username of usernames) {
+          const card = await TrelloAPI.createCard(
+            targetList.id,
+            username,
+            `Shift: ${now}\nSubmitted by: ${interaction.user.tag}`,
+            new Date()
+          );
+
+          if (pendingLabel) {
+            await TrelloAPI.addLabelToCard(card.id, pendingLabel.id);
+          }
+        }
+
+        await interaction.editReply(`✅ Shift successfully recorded for: ${usernames.join(', ')}`);
+      } catch (error) {
+        console.error('❌ Error recording shift:', error);
+        await interaction.editReply('❌ There was an error while recording the shift. Please try again later.');
       }
-
-      await interaction.editReply('✅ Shift successfully logged!');
-    } catch (error) {
-      console.error('Error recording shift:', error);
-      await interaction.editReply('❌ An error occurred while recording the shift.');
     }
   },
 };

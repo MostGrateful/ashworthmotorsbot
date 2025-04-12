@@ -2,7 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, GatewayIntentBits, REST, Routes } = require('discord.js');
-const db = require('./db'); // Your db.js connection
+const db = require('../db'); // Your db.js connection
 
 const client = new Client({
   intents: [
