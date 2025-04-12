@@ -7,13 +7,12 @@ module.exports = {
     .setDescription('Search a username on the Firestone database for profile, arrests, and citations.')
     .addStringOption(option =>
       option.setName('username')
-        .setDescription('The username to search for.')
+        .setDescription('Please provide the username of the person you are checking.')
         .setRequired(true)
     ),
 
   async execute(interaction) {
     const username = interaction.options.getString('username');
-
     await interaction.reply({ content: 'Searching the Firestone database...', ephemeral: true });
 
     const browser = await puppeteer.launch({ headless: true });
@@ -31,67 +30,85 @@ module.exports = {
         const text = document.body.innerText;
         const profileImage = document.querySelector('img')?.src || null;
 
-        const getSection = (start, end) => {
-          const regex = new RegExp(`${start}[\\s\\S]*?${end}`, 'i');
-          const match = text.match(regex);
+        const extract = (start, end) => {
+          const pattern = new RegExp(`${start}[\\s\\S]*?${end}`, 'i');
+          const match = text.match(pattern);
           return match ? match[0].replace(start, '').replace(end, '').trim() : 'No Data Found';
         };
 
         return {
           profileImage,
-          profile: getSection('Profile', 'Arrest Record'),
-          arrests: getSection('Arrest Record', 'Citation Records'),
-          citations: getSection('Citation Records', 'Terms'),
+          profile: extract('Profile', 'Callsigns'),
+          callsigns: extract('Callsigns', 'Paintball Tournament Statistics'),
+          paintball: extract('Paintball Tournament Statistics', 'Vehicles'),
+          vehicles: extract('Vehicles', 'Arrest Record'),
+          arrests: extract('Arrest Record', 'Citation Records'),
+          citations: extract('Citation Records', 'Terms')
         };
       });
 
       await browser.close();
 
-      const embeds = [
-        new EmbedBuilder().setTitle(`Profile for ${username}`).setDescription(data.profile).setThumbnail(data.profileImage).setColor('Blue'),
-        new EmbedBuilder().setTitle(`Arrest Record`).setDescription(data.arrests).setColor('Red'),
-        new EmbedBuilder().setTitle(`Citation Record`).setDescription(data.citations).setColor('Orange')
-      ];
+      const embeds = category => {
+        return new EmbedBuilder()
+          .setTitle(`${category} for ${username}`)
+          .setDescription(data[category.toLowerCase()] || 'No Data Found')
+          .setThumbnail(data.profileImage)
+          .setColor('Blurple')
+          .setFooter({
+            text: 'The source of this information comes from the **[Firestone Database](https://database.stateoffirestone.com/)**',
+            iconURL: 'https://images-ext-1.discordapp.net/external/F9kGNa5k1MZU3TZJ1q4AOKL3m2JNUCFZQO-piZHTkGw/https/database.stateoffirestone.com/img/FS_Database.png?format=webp&quality=lossless&width=1860&height=239',
+          });
+      };
 
-      let pageIndex = 0;
+      const categories = ['Profile', 'Callsigns', 'Paintball', 'Vehicles', 'Arrests', 'Citations'];
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('back').setLabel('Back').setStyle(ButtonStyle.Secondary).setDisabled(true),
-        new ButtonBuilder().setCustomId('next').setLabel('Next').setStyle(ButtonStyle.Primary)
+      let currentCategory = 0;
+
+      const categoryButtons = new ActionRowBuilder().addComponents(
+        categories.map((c, i) =>
+          new ButtonBuilder()
+            .setCustomId(`cat_${i}`)
+            .setLabel(c)
+            .setStyle(ButtonStyle.Primary)
+        )
       );
 
-      const message = await interaction.editReply({ embeds: [embeds[pageIndex]], components: [row] });
+      const msg = await interaction.editReply({
+        embeds: [embeds(categories[currentCategory])],
+        components: [categoryButtons],
+      });
 
-      const collector = message.createMessageComponentCollector({
+      const collector = msg.createMessageComponentCollector({
         componentType: ComponentType.Button,
-        time: 60000,
+        time: 120000,
       });
 
       collector.on('collect', async i => {
-        if (i.user.id !== interaction.user.id) return await i.reply({ content: 'This interaction isn\'t for you!', ephemeral: true });
+        if (i.user.id !== interaction.user.id)
+          return await i.reply({ content: 'This interaction is not for you!', ephemeral: true });
 
-        if (i.customId === 'back') pageIndex--;
-        if (i.customId === 'next') pageIndex++;
+        const chosenCategory = parseInt(i.customId.split('_')[1]);
+
+        currentCategory = chosenCategory;
 
         await i.update({
-          embeds: [embeds[pageIndex]],
-          components: [
-            new ActionRowBuilder().addComponents(
-              new ButtonBuilder().setCustomId('back').setLabel('Back').setStyle(ButtonStyle.Secondary).setDisabled(pageIndex === 0),
-              new ButtonBuilder().setCustomId('next').setLabel('Next').setStyle(ButtonStyle.Primary).setDisabled(pageIndex === embeds.length - 1)
-            )
-          ]
+          embeds: [embeds(categories[currentCategory])],
+          components: [categoryButtons],
         });
       });
 
       collector.on('end', async () => {
-        await message.edit({ components: [] });
+        await msg.edit({ components: [] });
       });
 
     } catch (error) {
-      console.error('❌ Error fetching checkrecord data:', error);
+      console.error('❌ Error:', error);
       await browser.close();
-      await interaction.editReply({ content: 'An error occurred while fetching the record.', ephemeral: true });
+      await interaction.editReply({
+        content: 'An error occurred while fetching the user data.',
+        ephemeral: true,
+      });
     }
   },
 };
