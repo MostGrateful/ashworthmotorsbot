@@ -5,10 +5,10 @@ const fetch = require('node-fetch');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('checkrecord')
-    .setDescription('Search a username on the Firestone database for profile, arrests, citations, and blacklist.')
+    .setDescription('Search a username on the Firestone database for their records.')
     .addStringOption(option =>
       option.setName('username')
-        .setDescription('Please provide the username of the person you are checking.')
+        .setDescription('Background Check')
         .setRequired(true)
     ),
 
@@ -30,16 +30,15 @@ module.exports = {
 
       const data = await page.evaluate(() => {
         const text = document.body.innerText;
-        const profileImage = document.querySelector('img')?.src || null;
-
+        const robloxIdMatch = text.match(/Roblox ID:\s(\d+)/);
+        const robloxId = robloxIdMatch ? robloxIdMatch[1] : null;
         const extract = (start, end) => {
           const pattern = new RegExp(`${start}[\\s\\S]*?${end}`, 'i');
           const match = text.match(pattern);
           return match ? match[0].replace(start, '').replace(end, '').trim() : '';
         };
-
         return {
-          profileImage,
+          robloxId,
           profile: extract('Profile', 'Callsigns'),
           arrests: extract('Arrest Record', 'Citation Records'),
           citations: extract('Citation Records', 'Terms')
@@ -48,50 +47,58 @@ module.exports = {
 
       await browser.close();
 
-      const footerText = '**The source of this information comes from the Firestone Database**';
+      const footerText = 'Source of this information comes from the Firestone Database';
       const footerImage = 'https://images-ext-1.discordapp.net/external/F9kGNa5k1MZU3TZJ1q4AOKL3m2JNUCFZQO-piZHTkGw/https/database.stateoffirestone.com/img/FS_Database.png?format=webp&quality=lossless&width=1860&height=239';
+      const avatarURL = data.robloxId ? `https://www.roblox.com/headshot-thumbnail/image?userId=${data.robloxId}&width=420&height=420&format=png` : null;
 
-      const cleanList = (input) => {
-        if (!input || input.length < 10) return 'No current record found.';
-        return input.split('\n').map(line => `• ${line}`).join('\n');
+      const formatRecords = (records) => {
+        if (!records || records.includes('No data available in table')) return 'No current record.';
+        return records
+          .split('\n')
+          .filter(line => line.includes('-'))
+          .map(line => `• ${line.trim()}`)
+          .join('\n') || 'No current record.';
       };
 
       const buildEmbed = (title, content) => new EmbedBuilder()
         .setTitle(`${title} for ${username}`)
         .setDescription(content)
-        .setThumbnail(data.profileImage)
+        .setThumbnail(avatarURL)
         .setColor('Blurple')
         .setFooter({ text: footerText, iconURL: footerImage });
 
-      const getBlacklistStatus = async () => {
-        const ignoredLabels = ['Dismissed', 'Denied', 'Voided', 'Appealed', 'Declined'];
-        const checkBoard = async (boardId) => {
-          const url = `https://api.trello.com/1/boards/${boardId}/cards?key=${process.env.TRELLO_KEY}&token=${process.env.TRELLO_TOKEN}`;
-          const cards = await fetch(url).then(r => r.json());
-          const card = cards.find(c => c.name.toLowerCase().includes(username.toLowerCase()));
-          if (!card) return 'None';
-          const hasIgnored = card.labels.some(label => ignoredLabels.includes(label.name));
-          return hasIgnored ? 'None' : '✅ Active';
-        };
+      const categories = ['Profile', 'Certifications', 'Arrest Record', 'Citation Record', 'Blacklist'];
+      const contentData = [
+        data.profile || 'No Data Found.',
+        'Coming Soon.',
+        formatRecords(data.arrests),
+        formatRecords(data.citations)
+      ];
 
+      const checkBoard = async (boardId) => {
+        const response = await fetch(`https://trello.com/b/${boardId}.json`);
+        if (!response.ok) return 'None';
+        const json = await response.json();
+        const cards = json.cards || [];
+        const card = cards.find(c => c.name.toLowerCase().includes(username.toLowerCase()));
+        if (!card) return 'None';
+        const hasIgnored = (card.labels || []).some(label =>
+          ['Dismissed', 'Denied', 'Voided', 'Appealed', 'Declined'].includes(label.name)
+        );
+        return hasIgnored ? 'None' : '✅ Active';
+      };
+
+      const getBlacklistStatus = async () => {
         const dops = await checkBoard('kl3ZKkNr');
         const doc = await checkBoard('r4a8Tw1I');
 
         return new EmbedBuilder()
           .setTitle(`${username} - Blacklist Status`)
           .setDescription(`__**Ashworth Motorsports**__\nStatus: N/A\n\n__**Public Safety (DoPS)**__\nStatus: ${dops}\n\n__**Department of Commerce (DoC)**__\nStatus: ${doc}`)
-          .setThumbnail(data.profileImage)
+          .setThumbnail(avatarURL)
           .setColor('Blurple')
           .setFooter({ text: footerText, iconURL: footerImage });
       };
-
-      const categories = ['Profile', 'Certifications', 'Arrest Record', 'Citation Record', 'Blacklist'];
-      const contentData = [
-        data.profile || 'No Data Found.',
-        'Coming Soon.',
-        cleanList(data.arrests),
-        cleanList(data.citations)
-      ];
 
       const categoryButtons = categories.map((c, i) =>
         new ButtonBuilder()
@@ -131,7 +138,9 @@ module.exports = {
       });
 
       collector.on('end', async () => {
-        await msg.edit({ components: [] });
+        if (msg.editable) {
+          await msg.edit({ components: [] }).catch(() => {});
+        }
       });
 
     } catch (error) {
