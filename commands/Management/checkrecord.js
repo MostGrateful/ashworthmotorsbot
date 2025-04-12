@@ -14,7 +14,6 @@ module.exports = {
 
   async execute(interaction) {
     const username = interaction.options.getString('username');
-
     await interaction.reply({ content: 'Searching the Firestone database...', flags: 64 });
     const msg = await interaction.fetchReply();
 
@@ -32,7 +31,7 @@ module.exports = {
     const userId = await fetchUserId(username);
 
     if (!userId) {
-      await interaction.editReply({ content: `❌ The username **${username}** could not be found on Roblox. Please check the spelling and try again.`, flags: 64 });
+      await interaction.editReply({ content: `❌ The username **${username}** could not be found on Roblox.`, flags: 64 });
       return;
     }
 
@@ -80,7 +79,7 @@ module.exports = {
 
       const formatProfile = (profile) => {
         if (!profile) return 'No Data Found.';
-        return '**__Profile:__**\n' + profile
+        return profile
           .replace(/Roblox ID:/g, '**__Roblox ID:__**')
           .replace(/Username:/g, '**__Username:__**')
           .replace(/Asset Net Worth:/g, '**__Asset Net Worth:__**');
@@ -152,10 +151,6 @@ module.exports = {
         if (i.user.id !== interaction.user.id)
           return await i.reply({ content: 'This interaction is not for you!', ephemeral: true });
 
-        if (!i.deferred && !i.replied) {
-          await i.deferUpdate().catch(() => {});
-        }
-
         currentCategory = parseInt(i.customId.split('_')[1]);
 
         if (currentCategory === 4) {
@@ -164,9 +159,9 @@ module.exports = {
           await i.editReply({ content: null, embeds: [embed], components: [row] }).catch(() => {});
         } else {
           await i.update({
+            content: null,
             embeds: [buildEmbed(categories[currentCategory], contentData[currentCategory])],
             components: [row],
-            content: null
           }).catch(() => {});
         }
       });
