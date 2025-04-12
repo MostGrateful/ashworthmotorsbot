@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('checkrecord')
-    .setDescription('Searches a username on the Firestone database and returns their profile, arrest, and citation records.')
+    .setDescription('Search a username on the Firestone database for profile, arrests, and citations.')
     .addStringOption(option =>
       option.setName('username')
         .setDescription('Please provide the username of the person you are checking.')
