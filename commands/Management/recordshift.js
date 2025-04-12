@@ -54,7 +54,7 @@ module.exports = {
         const now = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
 
         for (const username of usernames) {
-          const description = `# Shift Log\nHosted by: ${host}\nDate & Time: ${dateTime}\n---\nShift Logged by: ${interaction.user.tag}\nDate & Time: ${now}\n---\nReviewed & Approved by: \nDate & Time: `;
+          const description = `# Shift Log\n### Hosted by: ${host}\n### Date & Time: ${dateTime}\n_________________\nShift Logged by: ${interaction.user.tag}\n_________________\nReviewed & Approved by: \nDate & Time: `;
 
           const card = await TrelloAPI.createCard(
             targetList.id,
@@ -75,3 +75,4 @@ module.exports = {
     }
   },
 };
+
