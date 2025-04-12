@@ -14,8 +14,9 @@ module.exports = {
   async execute(interaction, client) {
     const userInput = interaction.options.getString('user');
 
-    const trelloKey = process.env.TRELLO_KEY;
-    const trelloToken = process.env.TRELLO_TOKEN;
+    const trelloKey = process.env.TRELLO_API_KEY;
+    const trelloToken = process.env.TRELLO_API_TOKEN;
+
 
     const docBoardId = 'r4a8Tw1I';
     const dopsBoardId = 'kl3ZKkNr';
