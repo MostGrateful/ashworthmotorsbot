@@ -16,6 +16,7 @@ module.exports = {
     const username = interaction.options.getString('username');
 
     await interaction.reply({ content: 'Searching the Firestone database...', flags: 64 });
+    const msg = await interaction.fetchReply();
 
     const fetchUserId = async (username) => {
       const res = await fetch('https://users.roblox.com/v1/usernames/users', {
@@ -119,7 +120,7 @@ module.exports = {
 
         return new EmbedBuilder()
           .setTitle(`${username} - Blacklist Status`)
-          .setDescription(`__**Ashworth Motorsports**__\nStatus: N/A\n\n__**Public Safety (DoPS)**__\nStatus: ${dops}\n\n__**Department of Commerce (DoC)**__\nStatus: ${doc}`)
+          .setDescription(`__**Ashworth Motorsports**__\nStatus: N/A\n\n__**Public Safety (DoPS)**__\nStatus: ${dops}\n\n__**Department of Commerce Management (DoCM)**__\nStatus: ${doc}`)
           .setThumbnail(avatarURL)
           .setColor('Blurple')
           .setFooter({ text: footerText, iconURL: footerImage });
@@ -136,7 +137,8 @@ module.exports = {
 
       let currentCategory = 0;
 
-      const msg = await interaction.editReply({
+      await interaction.editReply({
+        content: null,
         embeds: [buildEmbed(categories[currentCategory], contentData[currentCategory])],
         components: [row],
       });
@@ -156,11 +158,17 @@ module.exports = {
 
         currentCategory = parseInt(i.customId.split('_')[1]);
 
-        const embed = currentCategory === 4
-          ? await getBlacklistStatus()
-          : buildEmbed(categories[currentCategory], contentData[currentCategory]);
-
-        await i.editReply({ embeds: [embed], components: [row] }).catch(() => {});
+        if (currentCategory === 4) {
+          await i.update({ content: 'Searching for Blacklist...', embeds: [], components: [] }).catch(() => {});
+          const embed = await getBlacklistStatus();
+          await i.editReply({ content: null, embeds: [embed], components: [row] }).catch(() => {});
+        } else {
+          await i.update({
+            embeds: [buildEmbed(categories[currentCategory], contentData[currentCategory])],
+            components: [row],
+            content: null
+          }).catch(() => {});
+        }
       });
 
       collector.on('end', async () => {
