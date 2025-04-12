@@ -3,10 +3,10 @@ const { SlashCommandBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('shutdown')
-    .setDescription('Owner Only - Safely shutdown the bot.'),
+    .setDescription('Owner Only - Safely shutdown the bot and go offline immediately.'),
 
   async execute(interaction, client) {
-    const allowedUsers = ['238058962711216130']; // Replace with your Discord ID(s)
+    const allowedUsers = ['238058962711216130']; // Your Discord ID(s)
 
     if (!allowedUsers.includes(interaction.user.id)) {
       return await interaction.reply({ content: '❌ You are not authorized to use this command.', ephemeral: true });
@@ -17,17 +17,18 @@ module.exports = {
 
       console.log(`Shutdown initiated by ${interaction.user.tag} (${interaction.user.id})`);
 
-      await client.destroy();
+      // Immediately set bot status to offline
+      await client.user.setStatus('invisible');
 
-      process.exit(0); // Force exit just in case
+      // Short delay for status to register
+      setTimeout(() => {
+        client.destroy(); // Disconnect bot
+        process.exit(0);  // Force exit
+      }, 1500); // 1.5 second delay
 
     } catch (error) {
       console.error('❌ Error executing /shutdown:', error);
-
-      await interaction.reply({
-        content: 'An error occurred while attempting to shutdown the bot.',
-        ephemeral: true,
-      });
+      await interaction.reply({ content: 'An error occurred while shutting down.', ephemeral: true });
     }
   },
 };
