@@ -2,7 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, GatewayIntentBits, REST, Routes } = require('discord.js');
-const db = require('../db'); // Your db.js connection
+const db = require('./db');
 
 const client = new Client({
   intents: [
@@ -13,11 +13,11 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-client.db = db; // Attach db to client so all commands have access
+client.db = db;
 
-// Dynamically load all commands from subfolders
+// Load Commands Dynamically
 const commands = [];
-const commandsPath = path.join(__dirname, 'commands');
+const commandsPath = path.join(__dirname, '../commands');
 
 for (const folder of fs.readdirSync(commandsPath)) {
   const folderPath = path.join(commandsPath, folder);
@@ -26,20 +26,16 @@ for (const folder of fs.readdirSync(commandsPath)) {
   const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
 
   for (const file of commandFiles) {
-    const filePath = path.join(folderPath, file);
-    const command = require(filePath);
+    const command = require(path.join(folderPath, file));
     if ('data' in command && 'execute' in command) {
       client.commands.set(command.data.name, command);
       commands.push(command.data.toJSON());
-    } else {
-      console.warn(`[WARNING] The command at ${filePath} is missing "data" or "execute".`);
     }
   }
 }
 
-// Auto register slash commands
+// Deploy Commands
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-
 (async () => {
   try {
     console.log(`🔄 Reloading ${commands.length} application (/) commands...`);
@@ -53,8 +49,8 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   }
 })();
 
-// Load events
-const eventsPath = path.join(__dirname, 'events');
+// Load Events
+const eventsPath = path.join(__dirname, '../events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
 for (const file of eventFiles) {
@@ -64,11 +60,9 @@ for (const file of eventFiles) {
   }
 }
 
-// When bot ready
 client.once('ready', () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
-// Login bot
 client.login(process.env.DISCORD_TOKEN);
 
