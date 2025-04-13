@@ -79,10 +79,22 @@ module.exports = {
 
       const formatProfile = (profile) => {
         if (!profile) return 'No Data Found.';
+
         const lines = profile.split('\n');
-        return `**Profile ID:** ${lines[0] || 'Not Found'}
-**Username:** ${lines[1] || 'Not Found'}
-**Asset Net Worth:** ${lines[2] || 'Not Found'}`;
+
+        let robloxId = 'Not Found';
+        let usernameDB = 'Not Found';
+        let netWorth = 'Not Found';
+
+        for (const line of lines) {
+          if (line.startsWith('Roblox ID:')) robloxId = line.replace('Roblox ID:', '').trim();
+          if (line.startsWith('Username:')) usernameDB = line.replace('Username:', '').trim();
+          if (line.startsWith('Asset Net Worth:')) netWorth = line.replace('Asset Net Worth:', '').trim();
+        }
+
+        return `**Profile ID:** ${robloxId}
+**Username:** ${usernameDB}
+**Asset Net Worth:** ${netWorth}`;
       };
 
       const buildEmbed = (title, content) => new EmbedBuilder()
@@ -152,17 +164,21 @@ module.exports = {
 
         currentCategory = parseInt(i.customId.split('_')[1]);
 
+        await i.update({ content: 'Fetching Data...', embeds: [], components: [] }).catch(() => {});
+
+        let embed;
+
         if (currentCategory === 4) {
-          await i.update({ content: 'Searching for Blacklist...', embeds: [], components: [] }).catch(() => {});
-          const embed = await getBlacklistStatus();
-          await i.editReply({ content: null, embeds: [embed], components: [row] }).catch(() => {});
+          embed = await getBlacklistStatus();
         } else {
-          await i.update({
-            content: null,
-            embeds: [buildEmbed(categories[currentCategory], contentData[currentCategory])],
-            components: [row],
-          }).catch(() => {});
+          embed = buildEmbed(categories[currentCategory], contentData[currentCategory]);
         }
+
+        await msg.edit({
+          content: null,
+          embeds: [embed],
+          components: [row],
+        }).catch(() => {});
       });
 
       collector.on('end', async () => {
