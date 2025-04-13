@@ -80,10 +80,15 @@ module.exports = {
 
       const formatProfile = (profile) => {
         if (!profile) return 'No Data Found.';
-        return profile
-          .replace(/Roblox ID:\s*/g, '**__Roblox ID:__** ')
-          .replace(/Username:\s*/g, '**__Username:__** ')
-          .replace(/Asset Net Worth:\s*/g, '**__Asset Net Worth:__** ');
+
+        const lines = profile.split('\n');
+        const robloxId = lines[0] ? lines[0] : 'Not Found';
+        const user = lines[1] ? lines[1] : 'Not Found';
+        const netWorth = lines[2] ? lines[2] : 'Not Found';
+
+        return `**__Roblox ID:__** ${robloxId}
+**__Username:__** ${user}
+**__Asset Net Worth:__** ${netWorth}`;
       };
 
       const buildEmbed = (title, content) => new EmbedBuilder()
