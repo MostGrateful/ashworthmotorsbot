@@ -20,15 +20,21 @@ module.exports = {
       // Immediately set bot status to offline
       await client.user.setStatus('invisible');
 
-      // Short delay for status to register
+      // Delay for status to update before destroying
       setTimeout(() => {
         client.destroy(); // Disconnect bot
-        process.exit(0);  // Force exit
-      }, 1500); // 1.5 second delay
+        process.exit(0);  // Exit process
+      }, 1500); // 1.5s delay ensures status shows offline
 
     } catch (error) {
       console.error('❌ Error executing /shutdown:', error);
-      await interaction.reply({ content: 'An error occurred while shutting down.', ephemeral: true });
+
+      // Safe fallback reply
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: 'An error occurred while shutting down.', ephemeral: true });
+      } else {
+        await interaction.reply({ content: 'An error occurred while shutting down.', ephemeral: true });
+      }
     }
   },
 };
