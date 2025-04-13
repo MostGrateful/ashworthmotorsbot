@@ -24,9 +24,8 @@ module.exports = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usernames: [username] })
       });
-
       const json = await res.json();
-      return json.data && json.data.length > 0 ? json.data[0].id : null;
+      return json.data?.[0]?.id || null;
     };
 
     const userId = await fetchUserId(username);
@@ -36,7 +35,7 @@ module.exports = {
       return;
     }
 
-    const avatarURL = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=420x420&format=Png&isCircular=false`;
+    const avatarURL = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`;
 
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
@@ -80,15 +79,10 @@ module.exports = {
 
       const formatProfile = (profile) => {
         if (!profile) return 'No Data Found.';
-
         const lines = profile.split('\n');
-        const robloxId = lines[0] ? lines[0] : 'Not Found';
-        const user = lines[1] ? lines[1] : 'Not Found';
-        const netWorth = lines[2] ? lines[2] : 'Not Found';
-
-        return `**__Roblox ID:__** ${robloxId}
-**__Username:__** ${user}
-**__Asset Net Worth:__** ${netWorth}`;
+        return `**Profile ID:** ${lines[0] || 'Not Found'}
+**Username:** ${lines[1] || 'Not Found'}
+**Asset Net Worth:** ${lines[2] || 'Not Found'}`;
       };
 
       const buildEmbed = (title, content) => new EmbedBuilder()
@@ -139,7 +133,6 @@ module.exports = {
       );
 
       const row = new ActionRowBuilder().addComponents(categoryButtons);
-
       let currentCategory = 0;
 
       await interaction.editReply({
@@ -178,7 +171,6 @@ module.exports = {
         }
 
         const logChannel = interaction.guild.channels.cache.get('1354669298060365884');
-
         if (logChannel && logChannel.isTextBased()) {
           const logEmbed = new EmbedBuilder()
             .setTitle('CheckRecord Command Used')
