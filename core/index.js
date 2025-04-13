@@ -5,7 +5,7 @@ const path = require('path');
 const db = require('./db');
 const logger = require('../utils/logger');
 const loadCommands = require('./loadCommands');
-const { updateStatus } = require('../utils/statuspage'); // Statuspage Integration
+const updateStatus = require('../utils/statuspage');
 
 const client = new Client({
   intents: [
@@ -17,14 +17,14 @@ const client = new Client({
 
 client.commands = new Collection();
 client.db = db;
-client.utils = { log: logger.log }; // Auto Logger Ready!
+client.utils = { log: logger.log };
 
 const commands = [];
 
-// Dynamically Load Commands
+// Load Commands Dynamically
 loadCommands(path.join(__dirname, '../commands'), commands, client);
 
-// Register Commands to Discord API
+// Deploy Slash Commands
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
@@ -40,7 +40,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   }
 })();
 
-// Load Events
+// Load Events Dynamically
 const eventsPath = path.join(__dirname, '../events');
 for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
   const event = require(path.join(eventsPath, file));
@@ -51,18 +51,20 @@ for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
 
 client.once('ready', async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
-  await updateStatus('operational'); // Set Bot to Operational
+  await updateStatus('operational'); // Statuspage Online Update
+});
+
+process.on('exit', async () => {
+  await updateStatus('partial_outage'); // Statuspage Offline Update
 });
 
 client.login(process.env.DISCORD_TOKEN);
 
-// Handle Errors & Update Statuspage Automatically
-process.on('unhandledRejection', async error => {
+// Global Error Handlers
+process.on('unhandledRejection', error => {
   console.error('❌ Unhandled Promise Rejection:', error);
-  await updateStatus('major_outage');
 });
 
-process.on('uncaughtException', async error => {
+process.on('uncaughtException', error => {
   console.error('❌ Uncaught Exception:', error);
-  await updateStatus('major_outage');
 });
