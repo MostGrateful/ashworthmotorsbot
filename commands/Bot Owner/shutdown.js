@@ -6,35 +6,29 @@ module.exports = {
     .setDescription('Owner Only - Safely shutdown the bot and go offline immediately.'),
 
   async execute(interaction, client) {
-    const allowedUsers = ['238058962711216130']; // Your Discord ID(s)
+    const allowedUsers = ['238058962711216130']; // Your Discord User ID(s)
 
     if (!allowedUsers.includes(interaction.user.id)) {
-      return await interaction.reply({ content: '❌ You are not authorized to use this command.', ephemeral: true });
+      return await interaction.reply({ content: '❌ You are not authorized to use this command.', flags: 64 });
     }
 
     try {
-      await interaction.reply({ content: 'Shutting down... 🛑', ephemeral: true });
+      await interaction.reply({ content: 'Shutting down... 🛑', flags: 64 });
 
       console.log(`Shutdown initiated by ${interaction.user.tag} (${interaction.user.id})`);
 
       // Immediately set bot status to offline
       await client.user.setStatus('invisible');
 
-      // Delay for status to update before destroying
+      // Delay to let status update
       setTimeout(() => {
         client.destroy(); // Disconnect bot
-        process.exit(0);  // Exit process
-      }, 1500); // 1.5s delay ensures status shows offline
+        process.exit(0);  // Exit the process
+      }, 1500);
 
     } catch (error) {
       console.error('❌ Error executing /shutdown:', error);
-
-      // Safe fallback reply
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: 'An error occurred while shutting down.', ephemeral: true });
-      } else {
-        await interaction.reply({ content: 'An error occurred while shutting down.', ephemeral: true });
-      }
+      await interaction.reply({ content: 'An error occurred while shutting down.', flags: 64 });
     }
   },
 };
