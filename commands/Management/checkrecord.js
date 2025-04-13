@@ -12,8 +12,9 @@ module.exports = {
         .setRequired(true)
     ),
 
-  async execute(interaction) {
+  async execute(interaction, client) {
     const username = interaction.options.getString('username');
+
     await interaction.reply({ content: 'Searching the Firestone database...', flags: 64 });
     const msg = await interaction.fetchReply();
 
@@ -80,9 +81,9 @@ module.exports = {
       const formatProfile = (profile) => {
         if (!profile) return 'No Data Found.';
         return profile
-          .replace(/Roblox ID:/g, '**__Roblox ID:__**')
-          .replace(/Username:/g, '**__Username:__**')
-          .replace(/Asset Net Worth:/g, '**__Asset Net Worth:__**');
+          .replace(/Roblox ID:\s*/g, '**__Roblox ID:__** ')
+          .replace(/Username:\s*/g, '**__Username:__** ')
+          .replace(/Asset Net Worth:\s*/g, '**__Asset Net Worth:__** ');
       };
 
       const buildEmbed = (title, content) => new EmbedBuilder()
